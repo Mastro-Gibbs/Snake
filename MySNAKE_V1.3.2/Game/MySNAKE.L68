@@ -1,0 +1,1408 @@
+00001000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.16.01
+Created On: 11/07/2020 10:52:31
+
+00000000                             1  *---------------------------------------------------------------------------
+00000000                             2  * Program Version : 1.3.2
+00000000                             3  * Written By      : Stefano Fattore
+00000000                             4  * Date Created    : 16/05/2020
+00000000                             5  * Last Update     : 08/06/2020
+00000000                             6  * Description     : Il simpatico gioco del serpente e la mela
+00000000                             7  *
+00000000                             8  *---------------------------------------------------------------------------
+00000000                             9  
+00001000                            10          ORG    $1000
+00001000                            11          
+00001000                            12  *====== COLORS ======*
+00001000                            13         
+00001000  =00347C2C                 14  JUNGLE  EQU    $00347C2C  (JUNGLE GREEN)
+00001000  =002B65EC                 15  COPPER  EQU    $002B65EC
+00001000  =001728F6                 16  FIRE    EQU    $001728F6  (LITE RED)
+00001000  =002B90EC                 17  LBROWN  EQU    $002B90EC
+00001000  =0001D8FF                 18  DRAGOON EQU    $0001D8FF  (STRANGE YELLOW)
+00001000  =000000FF                 19  RED     EQU    $000000FF
+00001000  =00000000                 20  BLACK   EQU    $00000000
+00001000  =0000FFFF                 21  YELLOW  EQU    $0000FFFF
+00001000  =00800080                 22  PURPLE  EQU    $00800080  
+00001000  =00828484                 23  BTGRAY  EQU    $00828484  (BATTLESHIP GRAY)
+00001000  =00FFCA82                 24  LCYAN   EQU    $00FFCA82  (VERY LIGHT CYAN)
+00001000  =002A3C3D                 25  IRIDIUM EQU    $002A3C3D  (DARK GREEN-GRAY)
+00001000                            26  
+00001000                            27  
+00001000                            28  *====== CO-ORDINATES ======*
+00001000                            29   
+00001000  =00001106                 30  CENTRE  EQU    $00001106  (CURSOR ON SCREEN CENTRE)
+00001000  =00001108                 31  CENTRE2 EQU    $00001108  (CURSOR ON SCREEN CENTRE-BOTTOM)
+00001000  =00001504                 32  CENTRE3 EQU    $00001504  (USED FOR CURRENT SCORE CURSOR POSITION)
+00001000  =00001A01                 33  CENTRE4 EQU    $00001A01  (USED FOR RECORD SCORE CURSOR POSITION)
+00001000  =00000700                 34  RECT1   EQU    $00000700  (CURSOR UP IN FIRST RECTCANGLE)
+00001000  =00000702                 35  RECT1B  EQU    $00000702  (CURSOR DOWN IN FIRST RECTCANGLE)
+00001000  =00001B00                 36  RECT2   EQU    $00001B00  (CURSOR UP IN SECOND RECTCANGLE)
+00001000  =00001D02                 37  RECT2B  EQU    $00001D02  (CURSOR DOWN IN SECOND RECTCANGLE)
+00001000  =00002C00                 38  RECT3   EQU    $00002C00  (CURSOR UP IN THIRD RECTCANGLE)
+00001000  =00003102                 39  RECT3B  EQU    $00003102  (CURSOR DOWN IN THIRD RECTCANGLE)
+00001000  =00004300                 40  RECT4   EQU    $00004300  (CURSOR UP IN FOURTH RECTCANGLE)
+00001000  =00004302                 41  RECT4B  EQU    $00004302  (CURSOR DOWN IN FOURTH RECTCANGLE)
+00001000  =0000FF00                 42  CLEAN   EQU    $0000FF00  (CLEAN THE SCREEN INTERFACE)
+00001000                            43  
+00001000                            44  *========= FONTS =========*
+00001000                            45  
+00001000  =01090000                 46  STDFONT EQU    $01090000  (STANDARD FONT MOTOROLA CODE 68000)
+00001000  =06180011                 47  FONT1   EQU    $06180011  (CUSTOM FONT)
+00001000                            48  
+00001000                            49  
+00001000                            50  
+00001000                            51  
+00001000                            52  START  
+00001000                            53  
+00001000                            54  
+00001000                            55  *===== LOAD && PLAY MUSIC =====*
+00001000                            56      
+00001000  43F9 00001DD8             57      LEA     GAMEMUSIC,A1 |  LOAD GAME MUSIC
+00001006  103C 0047                 58      MOVE.B  #71,D0       |
+0000100A  4E4F                      59      TRAP    #15          |
+0000100C  7401                      60      MOVE.L  #1,D2        |
+0000100E  103C 004C                 61      MOVE.B  #76,D0       | PLAY GAME MUSIC IN LOOP WITH D2.L = 1
+00001012  4E4F                      62      TRAP    #15          |
+00001014                            63      
+00001014                            64          
+00001014                            65  *===== DEFAULT VALUES =====*
+00001014                            66      *SET TO #0 FOR ALL AND #1 TO GOLDEN APPLE TO START WITH IT
+00001014  41F9 00001DD6             67      LEA     EATEN,A0
+0000101A  10BC 0000                 68      MOVE.B  #0,(A0)
+0000101E  41F9 00001DD4             69      LEA     SCORE,A0
+00001024  30BC 0000                 70      MOVE.W  #0,(A0)
+00001028  41F9 00001DD7             71      LEA     GOLDEN,A0
+0000102E  10BC 0001                 72      MOVE.B  #1,(A0)
+00001032                            73      
+00001032                            74      *SET STARNDARD FONT, CUSTOM COLOR
+00001032  223C 00FFCA82             75      MOVE.L  #LCYAN,D1
+00001038  243C 01090000             76      MOVE.L  #STDFONT,D2
+0000103E  103C 0015                 77      MOVE.B  #21,D0
+00001042  4E4F                      78      TRAP    #15
+00001044                            79      
+00001044                            80      *CLOSE ALL OPENED FILES
+00001044  103C 0032                 81      MOVE.B  #50,D0    
+00001048  4E4F                      82      TRAP    #15
+0000104A                            83      
+0000104A                            84  
+0000104A                            85  *=============== DRAWING GRAPHIC INTERFACE ================*
+0000104A                            86      
+0000104A                            87      *BACKGROUND
+0000104A  223C 00347C2C             88      MOVE.L  #JUNGLE,D1
+00001050  103C 0051                 89      MOVE.B  #81,D0
+00001054  4E4F                      90      TRAP    #15
+00001056  323C 0000                 91      MOVE.W  #0,D1
+0000105A  343C 0000                 92      MOVE.W  #0,D2
+0000105E  103C 0059                 93      MOVE.B  #89,D0
+00001062  4E4F                      94      TRAP    #15
+00001064                            95  
+00001064                            96  *=============== DRAWING FIRST FRAME ================*
+00001064                            97  
+00001064                            98      *SET FIRST WALL COLOR
+00001064  223C 002B65EC             99      MOVE.L  #COPPER,D1  
+0000106A  103C 0050                100      MOVE.B  #80,D0
+0000106E  4E4F                     101      TRAP    #15
+00001070  123C 000A                102      MOVE.B  #10,D1 *-----> WIDTH PARAMETER
+00001074  103C 005D                103      MOVE.B  #93,D0
+00001078  4E4F                     104      TRAP    #15
+0000107A                           105      
+0000107A                           106      *DRAWING 4 FIRST WALLS
+0000107A  323C 0005                107      MOVE.W  #5,D1    *-----> LEFT
+0000107E  343C 003A                108      MOVE.W  #58,D2
+00001082  363C 0005                109      MOVE.W  #5,D3
+00001086  383C 01E0                110      MOVE.W  #480,D4
+0000108A  103C 0057                111      MOVE.B  #87,D0
+0000108E  4E4F                     112      TRAP    #15
+00001090                           113      
+00001090  323C 0000                114      MOVE.W  #0,D1    *-----> UPPER
+00001094  343C 0041                115      MOVE.W  #65,D2
+00001098  363C 0280                116      MOVE.W  #640,D3
+0000109C  383C 0041                117      MOVE.W  #65,D4
+000010A0  103C 0057                118      MOVE.B  #87,D0
+000010A4  4E4F                     119      TRAP    #15
+000010A6                           120      
+000010A6  323C 0279                121      MOVE.W  #633,D1  *-----> RIGTH
+000010AA  343C 01E0                122      MOVE.W  #480,D2
+000010AE  363C 027B                123      MOVE.W  #635,D3
+000010B2  383C 003E                124      MOVE.W  #62,D4
+000010B6  103C 0057                125      MOVE.B  #87,D0
+000010BA  4E4F                     126      TRAP    #15
+000010BC                           127      
+000010BC  323C 0000                128      MOVE.W  #0,D1    *-----> LOWER
+000010C0  343C 01D9                129      MOVE.W  #473,D2
+000010C4  363C 0280                130      MOVE.W  #640,D3
+000010C8  383C 01E0                131      MOVE.W  #480,D4
+000010CC  103C 0057                132      MOVE.B  #87,D0
+000010D0  4E4F                     133      TRAP    #15
+000010D2                           134      
+000010D2                           135  *=============== FIRST LINES IN THE FIRST FRAME DRAWING SECTION  ===============*
+000010D2                           136      
+000010D2                           137      *SET LINE COLOR
+000010D2  7200                     138      MOVE.L  #BLACK,D1
+000010D4  103C 0050                139      MOVE.B  #80,D0
+000010D8  4E4F                     140      TRAP    #15
+000010DA  123C 0001                141      MOVE.B  #1,D1 *-----> WIDTH PARAMETER
+000010DE  103C 005D                142      MOVE.B  #93,D0
+000010E2  4E4F                     143      TRAP    #15
+000010E4                           144  
+000010E4                           145      *DRAW  FIRST LINE
+000010E4  323C 0009                146      MOVE.W  #9,D1    *-----> LEFT LINE
+000010E8  343C 003A                147      MOVE.W  #58,D2
+000010EC  363C 0009                148      MOVE.W  #9,D3
+000010F0  383C 01E0                149      MOVE.W  #480,D4
+000010F4  103C 0054                150      MOVE.B  #84,D0
+000010F8  4E4F                     151      TRAP    #15
+000010FA                           152      
+000010FA  323C 000A                153      MOVE.W  #10,D1    *-----> UPPER LINE
+000010FE  343C 0045                154      MOVE.W  #69,D2
+00001102  363C 0274                155      MOVE.W  #628,D3
+00001106  383C 0045                156      MOVE.W  #69,D4
+0000110A  103C 0054                157      MOVE.B  #84,D0
+0000110E  4E4F                     158      TRAP    #15
+00001110                           159      
+00001110  323C 0274                160      MOVE.W  #628,D1  *-----> RIGTH LINE
+00001114  343C 01E0                161      MOVE.W  #480,D2
+00001118  363C 0274                162      MOVE.W  #628,D3
+0000111C  383C 003C                163      MOVE.W  #60,D4
+00001120  103C 0054                164      MOVE.B  #84,D0
+00001124  4E4F                     165      TRAP    #15
+00001126                           166      
+00001126  323C 000A                167      MOVE.W  #10,D1    *-----> LOWER LINE
+0000112A  343C 01D4                168      MOVE.W  #468,D2
+0000112E  363C 0274                169      MOVE.W  #628,D3
+00001132  383C 01D4                170      MOVE.W  #468,D4
+00001136  103C 0054                171      MOVE.B  #84,D0
+0000113A  4E4F                     172      TRAP    #15
+0000113C                           173      
+0000113C                           174  *========= SINGLE BRICK DRAWING SECTION IN THE FIRST FRAME ==========*
+0000113C                           175      
+0000113C  3A3C 01E0                176      MOVE.W  #480,D5
+00001140  343C 003C                177      MOVE.W  #60,D2
+00001144  383C 003C                178      MOVE.W  #60,D4
+00001148                           179  LOOP_LEFT          *-----> LEFT BRICK
+00001148  323C 0000                180      MOVE.W  #0,D1    
+0000114C  363C 0009                181      MOVE.W  #9,D3
+00001150  103C 0054                182      MOVE.B  #84,D0
+00001154  4E4F                     183      TRAP    #15
+00001156  0642 0014                184      ADD.W   #20,D2
+0000115A  0644 0014                185      ADD.W   #20,D4
+0000115E  0445 0014                186      SUB.W   #20,D5
+00001162  BA7C 003C                187      CMP.W   #60,D5
+00001166  6CE0                     188      BGE     LOOP_LEFT
+00001168                           189      
+00001168  3A3C 01E0                190      MOVE.W  #480,D5
+0000116C  343C 003C                191      MOVE.W  #60,D2
+00001170  383C 003C                192      MOVE.W  #60,D4
+00001174                           193  LOOP_RIGHT         *-----> RIGHT BRICK
+00001174  323C 0274                194      MOVE.W  #628,D1    
+00001178  363C 0280                195      MOVE.W  #640,D3
+0000117C  103C 0054                196      MOVE.B  #84,D0
+00001180  4E4F                     197      TRAP    #15
+00001182  0642 0014                198      ADD.W   #20,D2
+00001186  0644 0014                199      ADD.W   #20,D4
+0000118A  0445 0014                200      SUB.W   #20,D5
+0000118E  BA7C 003C                201      CMP.W   #60,D5
+00001192  6CE0                     202      BGE     LOOP_RIGHT
+00001194                           203      
+00001194  3A3C 0280                204      MOVE.W  #640,D5
+00001198  323C 0009                205      MOVE.W  #9,D1    
+0000119C  363C 0009                206      MOVE.W  #9,D3
+000011A0                           207  LOOP_UPPER         *-----> UPPER BRICK
+000011A0  343C 003C                208      MOVE.W  #60,D2
+000011A4  383C 0045                209      MOVE.W  #69,D4
+000011A8  103C 0054                210      MOVE.B  #84,D0
+000011AC  4E4F                     211      TRAP    #15
+000011AE  0641 0014                212      ADD.W   #20,D1
+000011B2  0643 0014                213      ADD.W   #20,D3
+000011B6  0445 0014                214      SUB.W   #20,D5
+000011BA  BA7C 0014                215      CMP.W   #20,D5
+000011BE  6EE0                     216      BGT     LOOP_UPPER
+000011C0                           217      
+000011C0  3A3C 0280                218      MOVE.W  #640,D5
+000011C4  323C 0009                219      MOVE.W  #9,D1   
+000011C8  363C 0009                220      MOVE.W  #9,D3
+000011CC                           221  LOOP_LOWER         *-----> LOWER BRICK
+000011CC  343C 01D4                222      MOVE.W  #468,D2
+000011D0  383C 01E0                223      MOVE.W  #480,D4
+000011D4  103C 0054                224      MOVE.B  #84,D0
+000011D8  4E4F                     225      TRAP    #15
+000011DA  0641 0014                226      ADD.W   #20,D1
+000011DE  0643 0014                227      ADD.W   #20,D3
+000011E2  0445 0014                228      SUB.W   #20,D5
+000011E6  BA7C 0014                229      CMP.W   #20,D5
+000011EA  6EE0                     230      BGT     LOOP_LOWER
+000011EC                           231      
+000011EC                           232  
+000011EC                           233  *============== DRAWING SECOND FRAME ================*  
+000011EC                           234      
+000011EC                           235      *SET SECOND WALL COLOR  
+000011EC  223C 002B90EC            236      MOVE.L  #LBROWN,D1  
+000011F2  103C 0050                237      MOVE.B  #80,D0
+000011F6  4E4F                     238      TRAP    #15
+000011F8  123C 0009                239      MOVE.B  #9,D1 *------> WIDTH PARAMETER
+000011FC  103C 005D                240      MOVE.B  #93,D0
+00001200  4E4F                     241      TRAP    #15
+00001202                           242      
+00001202                           243      *DRAWING 4 SECOND WALLS
+00001202  323C 000E                244      MOVE.W  #14,D1   *-----> LEFT
+00001206  343C 0046                245      MOVE.W  #70,D2
+0000120A  363C 000E                246      MOVE.W  #14,D3
+0000120E  383C 01D4                247      MOVE.W  #468,D4
+00001212  103C 0057                248      MOVE.B  #87,D0
+00001216  4E4F                     249      TRAP    #15
+00001218                           250      
+00001218  323C 000A                251      MOVE.W  #10,D1   *-----> UPPER
+0000121C  343C 004A                252      MOVE.W  #74,D2
+00001220  363C 0274                253      MOVE.W  #628,D3
+00001224  383C 004A                254      MOVE.W  #74,D4
+00001228  103C 0057                255      MOVE.B  #87,D0
+0000122C  4E4F                     256      TRAP    #15
+0000122E                           257  
+0000122E  323C 026F                258      MOVE.W  #623,D1  *-----> RIGTH
+00001232  343C 01D4                259      MOVE.W  #468,D2
+00001236  363C 026F                260      MOVE.W  #623,D3
+0000123A  383C 0046                261      MOVE.W  #70,D4
+0000123E  103C 0057                262      MOVE.B  #87,D0
+00001242  4E4F                     263      TRAP    #15
+00001244                           264      
+00001244  323C 000A                265      MOVE.W  #10,D1   *-----> LOWER
+00001248  343C 01CF                266      MOVE.W  #463,D2
+0000124C  363C 0274                267      MOVE.W  #628,D3
+00001250  383C 01CF                268      MOVE.W  #463,D4
+00001254  103C 0057                269      MOVE.B  #87,D0
+00001258  4E4F                     270      TRAP    #15
+0000125A                           271      
+0000125A                           272  *========== SECOND LINES IN THE SECOND FRAME DRAWING SECTION ===========*
+0000125A                           273      
+0000125A                           274      *SET LINE COLOR
+0000125A  7200                     275      MOVE.L  #BLACK,D1
+0000125C  103C 0050                276      MOVE.B  #80,D0
+00001260  4E4F                     277      TRAP    #15
+00001262  123C 0001                278      MOVE.B  #1,D1 *-----> WIDTH PARAMETER
+00001266  103C 005D                279      MOVE.B  #93,D0
+0000126A  4E4F                     280      TRAP    #15
+0000126C                           281  
+0000126C                           282      *DRAW  FIRST LINE
+0000126C  323C 0012                283      MOVE.W  #18,D1    *-----> LEFT LINE
+00001270  343C 0045                284      MOVE.W  #69,D2
+00001274  363C 0012                285      MOVE.W  #18,D3
+00001278  383C 01D4                286      MOVE.W  #468,D4
+0000127C  103C 0054                287      MOVE.B  #84,D0
+00001280  4E4F                     288      TRAP    #15
+00001282                           289      
+00001282  323C 0012                290      MOVE.W  #18,D1    *-----> UPPER LINE
+00001286  343C 004E                291      MOVE.W  #78,D2
+0000128A  363C 026A                292      MOVE.W  #618,D3
+0000128E  383C 004E                293      MOVE.W  #78,D4
+00001292  103C 0054                294      MOVE.B  #84,D0
+00001296  4E4F                     295      TRAP    #15
+00001298                           296      
+00001298  323C 026B                297      MOVE.W  #619,D1   *-----> RIGTH LINE
+0000129C  343C 0045                298      MOVE.W  #69,D2
+000012A0  363C 026B                299      MOVE.W  #619,D3
+000012A4  383C 01D4                300      MOVE.W  #468,D4
+000012A8  103C 0054                301      MOVE.B  #84,D0
+000012AC  4E4F                     302      TRAP    #15
+000012AE                           303      
+000012AE  323C 0012                304      MOVE.W  #18,D1    *-----> LOWER LINE
+000012B2  343C 01CB                305      MOVE.W  #459,D2
+000012B6  363C 026A                306      MOVE.W  #618,D3
+000012BA  383C 01CB                307      MOVE.W  #459,D4
+000012BE  103C 0054                308      MOVE.B  #84,D0
+000012C2  4E4F                     309      TRAP    #15
+000012C4                           310      
+000012C4                           311  *=========== SINGLE BRICK DRAWING SECTION IN THE SECOND FRAME ===========*
+000012C4                           312      
+000012C4  3A3C 01CC                313      MOVE.W  #460,D5
+000012C8  343C 0045                314      MOVE.W  #69,D2
+000012CC  383C 0045                315      MOVE.W  #69,D4
+000012D0                           316  LOOP_LEFT2         *-----> LEFT BRICKS
+000012D0  323C 0009                317      MOVE.W  #9,D1    
+000012D4  363C 0012                318      MOVE.W  #18,D3
+000012D8  103C 0054                319      MOVE.B  #84,D0
+000012DC  4E4F                     320      TRAP    #15
+000012DE  0642 0014                321      ADD.W   #20,D2
+000012E2  0644 0014                322      ADD.W   #20,D4
+000012E6  0445 0014                323      SUB.W   #20,D5
+000012EA  BA7C 003C                324      CMP.W   #60,D5
+000012EE  6EE0                     325      BGT     LOOP_LEFT2
+000012F0                           326      
+000012F0  3A3C 01CC                327      MOVE.W  #460,D5
+000012F4  343C 0045                328      MOVE.W  #69,D2
+000012F8  383C 0045                329      MOVE.W  #69,D4
+000012FC                           330  LOOP_RIGHT2        *-----> RIGHT BRICKS
+000012FC  323C 026B                331      MOVE.W  #619,D1    
+00001300  363C 0274                332      MOVE.W  #628,D3
+00001304  103C 0054                333      MOVE.B  #84,D0
+00001308  4E4F                     334      TRAP    #15
+0000130A  0642 0014                335      ADD.W   #20,D2
+0000130E  0644 0014                336      ADD.W   #20,D4
+00001312  0445 0014                337      SUB.W   #20,D5
+00001316  BA7C 003C                338      CMP.W   #60,D5
+0000131A  6EE0                     339      BGT     LOOP_RIGHT2
+0000131C                           340      
+0000131C  3A3C 026C                341      MOVE.W  #620,D5
+00001320  323C 0012                342      MOVE.W  #18,D1    
+00001324  363C 0012                343      MOVE.W  #18,D3
+00001328                           344  LOOP_UPPER2        *-----> UPPER BRICKS
+00001328  343C 0045                345      MOVE.W  #69,D2
+0000132C  383C 004E                346      MOVE.W  #78,D4
+00001330  103C 0054                347      MOVE.B  #84,D0
+00001334  4E4F                     348      TRAP    #15
+00001336  0641 0014                349      ADD.W   #20,D1
+0000133A  0643 0014                350      ADD.W   #20,D3
+0000133E  0445 0014                351      SUB.W   #20,D5
+00001342  BA7C 0014                352      CMP.W   #20,D5
+00001346  6EE0                     353      BGT     LOOP_UPPER2
+00001348                           354      
+00001348  3A3C 026C                355      MOVE.W  #620,D5
+0000134C  323C 0012                356      MOVE.W  #18,D1    
+00001350  363C 0012                357      MOVE.W  #18,D3
+00001354                           358  LOOP_LOWER2        *-----> LOWER BRICKS
+00001354  343C 01CB                359      MOVE.W  #459,D2
+00001358  383C 01D4                360      MOVE.W  #468,D4
+0000135C  103C 0054                361      MOVE.B  #84,D0
+00001360  4E4F                     362      TRAP    #15
+00001362  0641 0014                363      ADD.W   #20,D1
+00001366  0643 0014                364      ADD.W   #20,D3
+0000136A  0445 0014                365      SUB.W   #20,D5
+0000136E  BA7C 0014                366      CMP.W   #20,D5
+00001372  6EE0                     367      BGT     LOOP_LOWER2
+00001374                           368  
+00001374                           369  *======= BLACK UPPER BOX DRAWING SECTION ========*
+00001374                           370      
+00001374                           371      *DRAW UPPER RECTANGLE   
+00001374  223C 002A3C3D            372      MOVE.L  #IRIDIUM,D1 
+0000137A  103C 0050                373      MOVE.B  #80,D0
+0000137E  4E4F                     374      TRAP    #15
+00001380  223C 002A3C3D            375      MOVE.L  #IRIDIUM,D1
+00001386  103C 0051                376      MOVE.B  #81,D0
+0000138A  4E4F                     377      TRAP    #15
+0000138C  123C 0001                378      MOVE.B  #1,D1 *------> WIDTH PARAMETER
+00001390  103C 005D                379      MOVE.B  #93,D0
+00001394  4E4F                     380      TRAP    #15
+00001396                           381      
+00001396                           382      *SET COORD FOR DRAWING 
+00001396  323C 0000                383      MOVE.W  #0,D1  
+0000139A  343C 0000                384      MOVE.W  #0,D2
+0000139E  363C 0280                385      MOVE.W  #640,D3
+000013A2  383C 003C                386      MOVE.W  #60,D4
+000013A6  103C 0057                387      MOVE.B  #87,D0
+000013AA  4E4F                     388      TRAP    #15
+000013AC                           389      
+000013AC                           390  *========== STRING POSITION AND PRINT; SCORE, APPLE, GOLDEN APPLE AVAILABILITY, RECORD POSITION AND PRINT =========*
+000013AC                           391      
+000013AC                           392      *FIRST SLOT ( GAME SCORE )
+000013AC  223C 00000700            393      MOVE.L  #RECT1,D1
+000013B2  103C 000B                394      MOVE.B  #11,D0
+000013B6  4E4F                     395      TRAP    #15
+000013B8  43F9 00001E7F            396      LEA     SCORESTR,A1
+000013BE  103C 000E                397      MOVE.B  #14,D0
+000013C2  4E4F                     398      TRAP    #15
+000013C4  223C 00000702            399      MOVE.L  #RECT1B,D1
+000013CA  0641 0200                400      ADDI.W  #$200,D1
+000013CE  103C 000B                401      MOVE.B  #11,D0
+000013D2  4E4F                     402      TRAP    #15
+000013D4  41F9 00001DD4            403      LEA     SCORE,A0
+000013DA  4281                     404      CLR.L   D1
+000013DC  1210                     405      MOVE.B  (A0),D1
+000013DE  103C 0003                406      MOVE.B  #3,D0
+000013E2  4E4F                     407      TRAP    #15
+000013E4                           408      
+000013E4                           409      *SECOND SLOT ( EAT APPLES )
+000013E4  223C 00001B00            410      MOVE.L  #RECT2,D1
+000013EA  103C 000B                411      MOVE.B  #11,D0
+000013EE  4E4F                     412      TRAP    #15
+000013F0  43F9 00001E85            413      LEA     APPLESTR,A1
+000013F6  103C 000E                414      MOVE.B  #14,D0
+000013FA  4E4F                     415      TRAP    #15
+000013FC  223C 00001D02            416      MOVE.L  #RECT2B,D1
+00001402  103C 000B                417      MOVE.B  #11,D0
+00001406  4E4F                     418      TRAP    #15
+00001408  41F9 00001DD6            419      LEA     EATEN,A0
+0000140E  4281                     420      CLR.L   D1
+00001410  1210                     421      MOVE.B  (A0),D1
+00001412  103C 0003                422      MOVE.B  #3,D0
+00001416  4E4F                     423      TRAP    #15
+00001418                           424      
+00001418                           425      *THIRD SLOT ( GOLDEN APPLE AVAILABILITY )
+00001418  223C 00002C00            426      MOVE.L  #RECT3,D1
+0000141E  103C 000B                427      MOVE.B  #11,D0
+00001422  4E4F                     428      TRAP    #15
+00001424  43F9 00001E8B            429      LEA     GOLDENSTR,A1
+0000142A  103C 000E                430      MOVE.B  #14,D0
+0000142E  4E4F                     431      TRAP    #15
+00001430  223C 00003102            432      MOVE.L  #RECT3B,D1
+00001436  103C 000B                433      MOVE.B  #11,D0
+0000143A  4E4F                     434      TRAP    #15
+0000143C  41F9 00001DD7            435      LEA     GOLDEN,A0
+00001442  4281                     436      CLR.L   D1
+00001444  1210                     437      MOVE.B  (A0),D1
+00001446  103C 0003                438      MOVE.B  #3,D0
+0000144A  4E4F                     439      TRAP    #15
+0000144C                           440      
+0000144C                           441      *FOURTH SLOT ( GAME RECORD )
+0000144C  223C 00004300            442      MOVE.L  #RECT4,D1
+00001452  103C 000B                443      MOVE.B  #11,D0
+00001456  4E4F                     444      TRAP    #15
+00001458  43F9 00001E78            445      LEA     RECORDSTR,A1
+0000145E  103C 000E                446      MOVE.B  #14,D0
+00001462  4E4F                     447      TRAP    #15
+00001464  223C 00004302            448      MOVE.L  #RECT4B,D1
+0000146A  103C 000B                449      MOVE.B  #11,D0
+0000146E  4E4F                     450      TRAP    #15
+00001470                           451      
+00001470  43F9 00001E02            452      LEA     FILENAME,A1   | LOAD FILE IN A1
+00001476  103C 0033                453      MOVE.B  #51,D0        | 
+0000147A  4E4F                     454      TRAP    #15           | 
+0000147C                           455      
+0000147C  43F9 00001E0D            456      LEA     BUFFER,A1 | LOAD STORAGE ADDRESS
+00001482  7406                     457      MOVE.L  #6,D2     | NUMBER BYTES TO READ IN THE FILE
+00001484  103C 0035                458      MOVE.B  #53,D0    | 
+00001488  4E4F                     459      TRAP    #15       |
+0000148A                           460      
+0000148A  123C 0006                461      MOVE.B  #6,D1     | N CHAR TO DISPLAY
+0000148E  103C 0001                462      MOVE.B  #1,D0     | TRAP TASK #1 WITHOUT CRLF TO PRINT N CHAR
+00001492  4E4F                     463      TRAP    #15
+00001494                           464  
+00001494                           465  *===== DRAWING 3 LINES TO SEPARATE THE BLACK RECTANGLE INTO 4 BLOCKS SECTION =====*
+00001494                           466     
+00001494  223C 00828484            467      MOVE.L  #BTGRAY,D1 *--> SET LINE COLOR
+0000149A  103C 0050                468      MOVE.B  #80,D0
+0000149E  4E4F                     469      TRAP    #15
+000014A0                           470      
+000014A0                           471      *FIRST LINE
+000014A0  323C 00A0                472      MOVE.W  #160,D1
+000014A4  343C 0000                473      MOVE.W  #0,D2
+000014A8  3601                     474      MOVE.W  D1,D3
+000014AA  383C 003B                475      MOVE.W  #59,D4
+000014AE  103C 0054                476      MOVE.B  #84,D0
+000014B2  4E4F                     477      TRAP    #15
+000014B4                           478      
+000014B4                           479      *SECOND LINE
+000014B4  323C 0140                480      MOVE.W  #320,D1
+000014B8  343C 0000                481      MOVE.W  #0,D2
+000014BC  3601                     482      MOVE.W  D1,D3
+000014BE  383C 003B                483      MOVE.W  #59,D4
+000014C2  103C 0054                484      MOVE.B  #84,D0
+000014C6  4E4F                     485      TRAP    #15
+000014C8                           486      
+000014C8                           487      *THIRD LINE
+000014C8  323C 01E0                488      MOVE.W  #480,D1
+000014CC  343C 0000                489      MOVE.W  #0,D2
+000014D0  3601                     490      MOVE.W  D1,D3
+000014D2  383C 003B                491      MOVE.W  #59,D4
+000014D6  103C 0054                492      MOVE.B  #84,D0
+000014DA  4E4F                     493      TRAP    #15
+000014DC                           494      
+000014DC                           495  *================= SNAKE AND APPLE DRAWER FOR FIRST TIME SECTION =================*
+000014DC                           496      
+000014DC  223C 0001D8FF            497      MOVE.L  #DRAGOON,D1  *----> SET PEN COLOR  
+000014E2  103C 0050                498      MOVE.B  #80,D0
+000014E6  4E4F                     499      TRAP    #15
+000014E8  223C 00800080            500      MOVE.L  #PURPLE,D1  *----> SET FILL COLOR 
+000014EE  103C 0051                501      MOVE.B  #81,D0
+000014F2  4E4F                     502      TRAP    #15
+000014F4  323C 0003                503      MOVE.W  #3,D1  *---------> SET WIDTH PEN 
+000014F8  103C 005D                504      MOVE.B  #93,D0
+000014FC  4E4F                     505      TRAP    #15
+000014FE                           506      
+000014FE  4200                     507      CLR.B   D0          | LOOP FOR FILL SNAKE BLOCKS MEMORY
+00001500  103C 0064                508      MOVE.B  #100,D0      |
+00001504  41F9 00001D02            509      LEA     MIDDLE,A0   |
+0000150A                           510  FILL                   *|
+0000150A  30FC 02BC                511      MOVE.W  #700,(A0)+  |
+0000150E  5300                     512      SUB.B   #1,D0       |
+00001510  66F8                     513      BNE     FILL        |
+00001512  33FC 0004 00001DCA       514      MOVE.W  #4,SIZE     | SET TO 2 BLOCKS
+0000151A                           515      
+0000151A  41F9 00001CFA            516      LEA     CURRENT,A0          | DYSPLAY SNAKE HEAD
+00001520  30FC 0014                517      MOVE.W  #20,(A0)+           |
+00001524  30BC 0050                518      MOVE.W  #80,(A0)           |
+00001528  41F9 00001CFA            519      LEA     CURRENT,A0          | RELOAD CURRENT FOR DRAW HIS HEAD IN LABEL 'SQUARES'
+0000152E  6100 05B0                520      BSR     SNAKE_SQUARE_DRAWER |  
+00001532                           521       
+00001532  41F9 00001D02            522      LEA     MIDDLE,A0   |
+00001538  30FC 0064                523      MOVE.W  #100,(A0)+   | STARTING DISPLAYING SNAKE BLOCKS 
+0000153C  30BC 0064                524      MOVE.W  #100,(A0)    |
+00001540                           525      
+00001540  6100 01E4                526      BSR     FIND_APPLE > DISPLAY FIRST APPLE
+00001544                           527    
+00001544  3C3C 0000                528      MOVE.W  #0,D6   | SET SNAKE MOVEMENT PIXELS
+00001548  3E3C 0014                529      MOVE.W  #20,D7  |
+0000154C                           530      
+0000154C  23FC 00000019 00001DCC   531      MOVE.L  #25,SPEED *----> STARTING SPEED VALUE
+00001556                           532  
+00001556  123C 0000                533      MOVE.B  #0,D1   |
+0000155A  103C 000C                534      MOVE.B  #12,D0  | SET ECHO KAYBOARD
+0000155E  4E4F                     535      TRAP    #15     |
+00001560                           536  
+00001560  103C 0008                537      MOVE.B  #8,D0   |
+00001564  4E4F                     538      TRAP    #15     | TIME IN D5
+00001566  2A01                     539      MOVE.L  D1,D5   |
+00001568                           540      
+00001568                           541  *============================== GAME LOOP =============================*
+00001568                           542      
+00001568                           543  LOOP
+00001568  103C 0008                544      MOVE.B  #8,D0       | NEED LOOP FOR STABILIZE SNAKE SPEED WITH TIME
+0000156C  4E4F                     545      TRAP    #15         |
+0000156E  9285                     546      SUB.L   D5,D1       |
+00001570  B2B9 00001DCC            547      CMP.L   SPEED,D1    | IF TIME IS LESS THAN SPEED, UN HUNDREDTHS HAS PASSED
+00001576  65F0                     548      BLO     LOOP        | LOOP UNTIL IT HAS
+00001578  4E4F                     549      TRAP    #15         | 
+0000157A  2A01                     550      MOVE.L  D1,D5       | RE-GET TIME FOR NEXT LOOP
+0000157C                           551      
+0000157C                           552  SKIP
+0000157C  41F9 00001CFE            553      LEA     OLD,A0      | COPY THE SNAKE TAIL IN TO <OLD> TO ERASE IT LATER
+00001582  43F9 00001D02            554      LEA     MIDDLE,A1   |
+00001588  4284                     555      CLR.L   D4          |
+0000158A  3839 00001DCA            556      MOVE.W  SIZE,D4     | 
+00001590  5944                     557      SUB.W   #4,D4       |
+00001592  D3C4                     558      ADDA.L  D4,A1       |
+00001594  30D9                     559      MOVE.W  (A1)+,(A0)+ |
+00001596  3091                     560      MOVE.W  (A1),(A0)   |
+00001598                           561      
+00001598  41F9 00001D02            562      LEA     MIDDLE,A0   | LOAD SKAKE BODY INTO MEMORY
+0000159E  43F9 00001D02            563      LEA     MIDDLE,A1   |
+000015A4  D1FC 000000C8            564      ADDA.L  #200,A0     | 
+000015AA  D3FC 000000C4            565      ADDA.L  #196,A1     |
+000015B0  4284                     566      CLR.L   D4          |
+000015B2  183C 0062                567      MOVE.B  #98,D4      |
+000015B6                           568     
+000015B6                           569  COPY
+000015B6  3121                     570      MOVE.W  -(A1),-(A0) | MOVE SQUARES BACK ONE 
+000015B8  5304                     571      SUB.B   #1,D4       | 
+000015BA  66FA                     572      BNE     COPY        |
+000015BC                           573      
+000015BC  41F9 00001D02            574      LEA     MIDDLE,A0   |
+000015C2  43F9 00001CFA            575      LEA     CURRENT,A1  | MOVING CURRENT (SNAKE HEAD) SQUARE TO MIDDLE (BODY)
+000015C8  30D9                     576      MOVE.W  (A1)+,(A0)+ |
+000015CA  3091                     577      MOVE.W  (A1),(A0)   |
+000015CC                           578      
+000015CC  4281                     579      CLR.L   D1          |
+000015CE  103C 0007                580      MOVE.B  #7,D0       |
+000015D2  4E4F                     581      TRAP    #15         | TRAP TASK 7 IF A KEY HAS BEEN PRESSED
+000015D4  4A81                     582      TST.L   D1          |       
+000015D6  6700 0048                583      BEQ     CONTINUE    | IF A KEY WASN'T PRESSED CONTINUE MOVING SNAKE
+000015DA                           584      
+000015DA  103C 0005                585      MOVE.B  #5,D0     | KEY READING WITH TRAP TASK 5
+000015DE  4E4F                     586      TRAP    #15       |
+000015E0  B23C 0053                587      CMP.B   #$53,D1   |
+000015E4  6700 0110                588      BEQ     DOWN      |
+000015E8  B23C 0057                589      CMP.B   #$57,D1   | > UPPER KEYS 'WASD'  
+000015EC  6700 0114                590      BEQ     UP        |
+000015F0  B23C 0041                591      CMP.B   #$41,D1   |
+000015F4  6700 0118                592      BEQ     LEFT      |
+000015F8  B23C 0044                593      CMP.B   #$44,D1   |
+000015FC  6700 011C                594      BEQ     RIGHT     |
+00001600                           595      
+00001600  B23C 0073                596      CMP.B   #$73,D1   |
+00001604  6700 00F0                597      BEQ     DOWN      |
+00001608  B23C 0077                598      CMP.B   #$77,D1   | > LOWER KEYS 'wasd'  
+0000160C  6700 00F4                599      BEQ     UP        |
+00001610  B23C 0061                600      CMP.B   #$61,D1   |
+00001614  6700 00F8                601      BEQ     LEFT      |
+00001618  B23C 0064                602      CMP.B   #$64,D1   |
+0000161C  6700 00FC                603      BEQ     RIGHT     |
+00001620                           604      
+00001620                           605  CONTINUE
+00001620  41F9 00001CFA            606      LEA     CURRENT,A0 *---> POSITION OF SNAKE HEAD IN D6 = X, D7 = Y
+00001626  DD58                     607      ADD.W   D6,(A0)+
+00001628  DF50                     608      ADD.W   D7,(A0)
+0000162A                           609      
+0000162A  41F9 00001CFA            610      LEA     CURRENT,A0  |
+00001630  0C50 0014                611      CMP.W   #20,(A0)    |    
+00001634  6D00 02D0                612      BLT     HITWALL     |
+00001638  0C58 0258                613      CMP.W   #600,(A0)+  |
+0000163C  6200 02C8                614      BHI     HITWALL     | BLOCK FOR CHECK IF SNAKE HIT A WALL
+00001640  0C50 0050                615      CMP.W   #80,(A0)    |
+00001644  6D00 02C0                616      BLT     HITWALL     |
+00001648  0C50 01B8                617      CMP.W   #440,(A0)   |
+0000164C  6200 02B8                618      BHI     HITWALL     |
+00001650                           619      
+00001650  4284                     620      CLR.L   D4          | RELOADING SNAKE SIZE IN D4 
+00001652  3839 00001DCA            621      MOVE.W  SIZE,D4     |
+00001658                           622  
+00001658                           623  CHECKER_HIT_ITSELF
+00001658  B87C 0000                624      CMP     #0,D4              | 
+0000165C  6F00 001E                625      BLE     CHECKER_EAT_APPLE  |
+00001660  5984                     626      SUB.L   #4,D4              |
+00001662  43F9 00001D02            627      LEA     MIDDLE,A1          |
+00001668  41F9 00001CFA            628      LEA     CURRENT,A0         |
+0000166E  D3C4                     629      ADDA.L  D4,A1              | BLOCK FOR CHECK IF SNAKE HIT HIMSELF, IT'S A LOOP
+00001670  B149                     630      CMP.W   (A1)+,(A0)+        |       FOR EACH SNAKE BODY PART
+00001672  66E4                     631      BNE     CHECKER_HIT_ITSELF |
+00001674  B149                     632      CMP.W   (A1)+,(A0)+        |
+00001676  66E0                     633      BNE     CHECKER_HIT_ITSELF |
+00001678  6000 024E                634      BRA     HIT_ITSELF         |
+0000167C                           635      
+0000167C                           636  CHECKER_EAT_APPLE
+0000167C  41F9 00001CFA            637      LEA     CURRENT,A0                   |
+00001682  43F9 00001DD0            638      LEA     APPLE,A1                     |
+00001688  B348                     639      CMP.W   (A0)+,(A1)+                  |
+0000168A  6600 0022                640      BNE     REFILLER_SNAKE_AND_BACKTAIL  |
+0000168E  B348                     641      CMP.W   (A0)+,(A1)+                  | SNAKE HEAD MEMLOC COMPARE WITH APPLE MEMLOC, IF COMBACES THE APPLE HAS BEEN EAT
+00001690  6600 001C                642      BNE     REFILLER_SNAKE_AND_BACKTAIL  | 
+00001694  6100 0188                643      BSR     SCORE_PRINT                  | DISPLAY NEW SCORE
+00001698  6100 008C                644      BSR     FIND_APPLE                   | BRANCH FOR DRAW A NEW APPLE
+0000169C  0C79 009F 00001DCA       645      CMP.W   #159,SIZE                    | IF SNAKE SIZE IS GREATHER, DON'T INCREASE LENGTH
+000016A4  6200 0008                646      BHI     REFILLER_SNAKE_AND_BACKTAIL  |
+000016A8  5879 00001DCA            647      ADD.W   #4,SIZE                      | ADD SLOT SNAKE, IF IT'S LENGTH IS LESS THAN 20
+000016AE                           648      
+000016AE                           649  REFILLER_SNAKE_AND_BACKTAIL
+000016AE  223C 0001D8FF            650      MOVE.L  #DRAGOON,D1  *---> SET FILL BODY COLOR 
+000016B4  103C 0050                651      MOVE.B  #80,D0
+000016B8  4E4F                     652      TRAP    #15
+000016BA  223C 00800080            653      MOVE.L  #PURPLE,D1  *---> SET FILL PEN COLOR SNAKE
+000016C0  103C 0051                654      MOVE.B  #81,D0
+000016C4  4E4F                     655      TRAP    #15
+000016C6                           656      
+000016C6  41F9 00001CFA            657      LEA     CURRENT,A0  *---> ADD A BLOCK FOR SNAKE WHERE IT NEED
+000016CC  6100 0412                658      BSR     SNAKE_SQUARE_DRAWER
+000016D0                           659      
+000016D0  223C 00347C2C            660      MOVE.L  #JUNGLE,D1 *----> REFILL BLOCK BEHIND THE SNAKE TAIL
+000016D6  103C 0050                661      MOVE.B  #80,D0
+000016DA  4E4F                     662      TRAP    #15
+000016DC  223C 00347C2C            663      MOVE.L  #JUNGLE,D1  
+000016E2  103C 0051                664      MOVE.B  #81,D0
+000016E6  4E4F                     665      TRAP    #15
+000016E8  41F9 00001CFE            666      LEA     OLD,A0
+000016EE  6100 03F0                667      BSR     SNAKE_SQUARE_DRAWER
+000016F2                           668      
+000016F2  6000 FE74                669      BRA     LOOP
+000016F6                           670  
+000016F6                           671  DOWN                   *| 
+000016F6  3C3C 0000                672      MOVE.W  #0,D6       |              
+000016FA  3E3C 0014                673      MOVE.W  #20,D7      |
+000016FE  6000 FF20                674      BRA     CONTINUE    |
+00001702                           675                         *|
+00001702                           676  UP                     *|
+00001702  3C3C 0000                677      MOVE.W  #0,D6       |
+00001706  3E3C FFEC                678      MOVE.W  #-20,D7     |
+0000170A  6000 FF14                679      BRA     CONTINUE    |
+0000170E                           680                         *| BLOCK FOR THE MOVEMENT OF THE SNAKE HEAD
+0000170E                           681  LEFT                   *|
+0000170E  3C3C FFEC                682      MOVE.W  #-20,D6     |
+00001712  3E3C 0000                683      MOVE.W  #0,D7       |
+00001716  6000 FF08                684      BRA     CONTINUE    |
+0000171A                           685                         *|
+0000171A                           686  RIGHT                  *|
+0000171A  3C3C 0014                687      MOVE.W  #20,D6      |
+0000171E  3E3C 0000                688      MOVE.W  #0,D7       |
+00001722  6000 FEFC                689      BRA     CONTINUE    |
+00001726                           690        
+00001726                           691  FIND_APPLE   *-----------> COORD GENERATOR USING TIME LIKE A VARIABLE BASE
+00001726  4281                     692      CLR.L   D1          
+00001728  4282                     693      CLR.L   D2
+0000172A  4283                     694      CLR.L   D3  
+0000172C  103C 0008                695      MOVE.B  #8,D0 *-----> TIME IN D1  
+00001730  4E4F                     696      TRAP    #15 
+00001732  3401                     697      MOVE.W  D1,D2 *-----> COORD 'X'
+00001734  84FC 001D                698      DIVU    #29,D2
+00001738  4842                     699      SWAP    D2
+0000173A  C4FC 0014                700      MULU    #20,D2
+0000173E  0682 00000014            701      ADDI.L  #20,D2
+00001744  103C 0008                702      MOVE.B  #8,D0 *-----> TIME IN D1
+00001748  4E4F                     703      TRAP    #15
+0000174A  3601                     704      MOVE.W  D1,D3 *-----> COORD 'Y
+0000174C  86FC 0015                705      DIVU    #21,D3
+00001750  4843                     706      SWAP    D3
+00001752  C6FC 0014                707      MULU    #20,D3
+00001756  0683 00000014            708      ADDI.L  #20,D3
+0000175C                           709      
+0000175C                           710  *APPLE && SNAKE COMPARER     
+0000175C                           711  COMPARING
+0000175C  43F9 00001D02            712      LEA     MIDDLE,A1
+00001762  45F9 00001DD6            713      LEA     EATEN,A2
+00001768  1012                     714      MOVE.B  (A2),D0
+0000176A  5200                     715      ADD.B   #1,D0
+0000176C  C1FC 0002                716      MULS    #2,D0
+00001770                           717  RESTART
+00001770  B459                     718      CMP.W   (A1)+,D2
+00001772  6600 000A                719      BNE     CONTINUE_TEST
+00001776  B659                     720      CMP.W   (A1)+,D3
+00001778  6600 0004                721      BNE     CONTINUE_TEST
+0000177C  67A8                     722      BEQ     FIND_APPLE
+0000177E                           723      
+0000177E                           724  CONTINUE_TEST 
+0000177E  5300                     725      SUB.B   #1,D0
+00001780  4A00                     726      TST.B   D0
+00001782  66EC                     727      BNE     RESTART      
+00001784                           728       
+00001784  B47C 0140                729      CMP.W   #320,D2 *---> IF X COOR IS 320 MAYBE ITS A GOLDEN APPLE, BRANCH TO VERIFY
+00001788  6700 0036                730      BEQ     GOLDEN_APPLE_COORD
+0000178C                           731      
+0000178C                           732  CHECK_Y     *--------------> CHECK IF Y COORD IS LOWER THAN 79 PIXELS
+0000178C  B67C 004F                733      CMP.W   #79,D3         * IF ITS TRUE INCREASE IT BY 60 PIXELS
+00001790  6C00 0006                734      BGE     COORD_APPLE
+00001794  0643 003C                735      ADD.W   #60,D3
+00001798                           736      
+00001798                           737  COORD_APPLE
+00001798  45F9 00001DD0            738      LEA     APPLE,A2
+0000179E  34C2                     739      MOVE.W  D2,(A2)+
+000017A0  34C3                     740      MOVE.W  D3,(A2)+
+000017A2  223C 001728F6            741      MOVE.L  #FIRE,D1 *------> SET PEN COLOR APPLE (FIREBRICK)
+000017A8  103C 0050                742      MOVE.B  #80,D0
+000017AC  4E4F                     743      TRAP    #15
+000017AE  223C 002B65EC            744      MOVE.L  #COPPER,D1 *----> SET BODY FILL APPLE (RED)
+000017B4  103C 0051                745      MOVE.B  #81,D0
+000017B8  4E4F                     746      TRAP    #15
+000017BA  6100 0344                747      BSR     APPLE_DRAWER
+000017BE  4E75                     748      RTS               
+000017C0                           749      
+000017C0                           750  GOLDEN_APPLE_COORD
+000017C0  B67C 00F0                751      CMP.W   #240,D3     *-----> CHECK Y COORD FOR CONFIRM IF IT'S A GOLDEN APPLE
+000017C4  66C6                     752      BNE     CHECK_Y
+000017C6  47F9 00001DD7            753      LEA     GOLDEN,A3   *-----> CHECK IF A GOLDEN CAN BE DISPLAYED
+000017CC  4A13                     754      TST.B   (A3)
+000017CE  6700 FF56                755      BEQ     FIND_APPLE
+000017D2  223C 002A3C3D            756      MOVE.L  #IRIDIUM,D1 *-----> BACKGROUND AVAILABILITY GOLDEN APPLE
+000017D8  103C 0051                757      MOVE.B  #81,D0
+000017DC  4E4F                     758      TRAP    #15
+000017DE  5313                     759      SUBI.B  #1,(A3)     *-----> DECREASE AVAILABILITY GOLDEN APPLE
+000017E0  223C 00003102            760      MOVE.L  #RECT3B,D1
+000017E6  103C 000B                761      MOVE.B  #11,D0
+000017EA  4E4F                     762      TRAP    #15
+000017EC  4281                     763      CLR.L   D1
+000017EE  1213                     764      MOVE.B  (A3),D1
+000017F0  103C 0003                765      MOVE.B  #3,D0
+000017F4  4E4F                     766      TRAP    #15
+000017F6  45F9 00001DD0            767      LEA     APPLE,A2
+000017FC  34C2                     768      MOVE.W  D2,(A2)+
+000017FE  34C3                     769      MOVE.W  D3,(A2)+
+00001800  223C 0000FFFF            770      MOVE.L  #YELLOW,D1 *------> SET PEN COLOR GOLDEN APPLE (YELLOW)
+00001806  103C 0050                771      MOVE.B  #80,D0
+0000180A  4E4F                     772      TRAP    #15
+0000180C  223C 0000FFFF            773      MOVE.L  #YELLOW,D1 *------> SET BODY FILL COLOR GOLDEN APPLE (YELLOW)
+00001812  103C 0051                774      MOVE.B  #81,D0
+00001816  4E4F                     775      TRAP    #15
+00001818  6100 02E6                776      BSR     APPLE_DRAWER
+0000181C  4E75                     777      RTS   
+0000181E                           778                                        
+0000181E                           779      
+0000181E                           780      
+0000181E                           781      
+0000181E                           782  *================= INCREASING SCORE, APPLE EATEN, GOLDEN APPLE ==============*
+0000181E                           783      
+0000181E                           784      
+0000181E                           785      
+0000181E                           786  SCORE_PRINT    *-----------> LABEL FOR PRINT SCORE
+0000181E  223C 002A3C3D            787      MOVE.L  #IRIDIUM,D1   *--> BACKGROUND STR NERO
+00001824  103C 0051                788      MOVE.B  #81,D0
+00001828  4E4F                     789      TRAP    #15
+0000182A  4281                     790      CLR.L   D1
+0000182C  223C 00000702            791      MOVE.L  #RECT1B,D1
+00001832  103C 000B                792      MOVE.B  #11,D0
+00001836  4E4F                     793      TRAP    #15
+00001838  41F9 00001DD0            794      LEA     APPLE,A0
+0000183E  0C58 0140                795      CMP.W   #320,(A0)+ *--> X COORD FOR GOLDEN APPLE CHECK
+00001842  6700 003A                796      BEQ     SCORE_BONUS
+00001846                           797      
+00001846                           798  NORMAL_SCORE
+00001846  41F9 00001DD4            799      LEA     SCORE,A0
+0000184C  0C50 0BB8                800      CMP.W   #3000,(A0)
+00001850  6C00 001A                801      BGE     SCOREUP   *---> IF SCORE IS GREATHER THAN 3000, SCORE WILL INCREASED BY +500 POINT
+00001854  0650 00FA                802      ADDI.W  #250,(A0) *---> +250 SCORE POINT
+00001858  3210                     803      MOVE.W  (A0),D1
+0000185A  103C 0003                804      MOVE.B  #3,D0
+0000185E  4E4F                     805      TRAP    #15
+00001860  41F9 00001DD0            806      LEA     APPLE,A0
+00001866  4EF9 00001896            807      JMP     APPLESCORE
+0000186C                           808      
+0000186C                           809  SCOREUP
+0000186C  0650 01F4                810      ADDI.W  #500,(A0) *---> +500 SCORE POINT LABEL
+00001870  3210                     811      MOVE.W  (A0),D1
+00001872  103C 0003                812      MOVE.B  #3,D0
+00001876  4E4F                     813      TRAP    #15
+00001878  4EF9 00001896            814      JMP     APPLESCORE
+0000187E                           815      
+0000187E                           816  SCORE_BONUS    *----------> LABEL FOR GOLDEN APPLE SCORE POINT INCREASE
+0000187E  0C50 00F0                817      CMP.W   #240,(A0) *---> Y COORD FOR GOLDEN APPLE CHECK
+00001882  66C2                     818      BNE     NORMAL_SCORE
+00001884  41F9 00001DD4            819      LEA     SCORE,A0
+0000188A  0650 2710                820      ADDI.W  #10000,(A0)
+0000188E  3210                     821      MOVE.W  (A0),D1
+00001890  103C 0003                822      MOVE.B  #3,D0
+00001894  4E4F                     823      TRAP    #15
+00001896                           824       
+00001896                           825  APPLESCORE     *------------> LABEL FOR PRINT HOW MUCH APPLE WAS EATEN 
+00001896  41F9 00001DD6            826      LEA     EATEN,A0
+0000189C  5210                     827      ADD.B   #1,(A0)  
+0000189E  223C 002A3C3D            828      MOVE.L  #IRIDIUM,D1  *--> BACKGRAOUND STR NERO
+000018A4  103C 0051                829      MOVE.B  #81,D0
+000018A8  4E4F                     830      TRAP    #15
+000018AA  4281                     831      CLR.L   D1
+000018AC  223C 00001D02            832      MOVE.L  #RECT2B,D1
+000018B2  103C 000B                833      MOVE.B  #11,D0
+000018B6  4E4F                     834      TRAP    #15
+000018B8  4281                     835      CLR.L   D1
+000018BA  1210                     836      MOVE.B  (A0),D1
+000018BC  103C 0003                837      MOVE.B  #3,D0
+000018C0  4E4F                     838      TRAP    #15
+000018C2  6100 0262                839      BSR     SPEED_INCREASING
+000018C6  4E75                     840      RTS   
+000018C8                           841  
+000018C8                           842      
+000018C8                           843  
+000018C8                           844  *================= GAME OVER, LOADING STRINGS  ====================*
+000018C8                           845  
+000018C8                           846  
+000018C8                           847   
+000018C8                           848  HIT_ITSELF
+000018C8                           849      *CUSTOM STRING OUTPUT
+000018C8  223C 002B65EC            850      MOVE.L  #COPPER,D1
+000018CE  243C 06180011            851      MOVE.L  #FONT1,D2
+000018D4  103C 0015                852      MOVE.B  #21,D0
+000018D8  4E4F                     853      TRAP    #15
+000018DA  223C 0000008C            854      MOVE.L  #140,D1
+000018E0  243C 000000D2            855      MOVE.L  #210,D2
+000018E6  103C 005F                856      MOVE.B  #95,D0   *---------> STRING HIT HIMSELF
+000018EA  43F9 00001E2C            857      LEA     HITBODYSTR,A1
+000018F0  4E4F                     858      TRAP    #15
+000018F2                           859      
+000018F2  223C 000000C8            860      MOVE.L  #200,D1 | 
+000018F8  103C 0017                861      MOVE.B  #23,D0  | -----> DELAY 2.0 SEC 
+000018FC  4E4F                     862      TRAP    #15     |
+000018FE                           863      
+000018FE  6100 0252                864      BSR     STOP_MUSIC
+00001902  6000 003C                865      BRA     NEW_OR_NOT  *--> NEW GAME LABEL BRANCH 
+00001906                           866  
+00001906                           867  HITWALL
+00001906                           868      *CUSTOM STRING OUTPUT
+00001906  223C 002B65EC            869      MOVE.L  #COPPER,D1
+0000190C  243C 06180011            870      MOVE.L  #FONT1,D2
+00001912  103C 0015                871      MOVE.B  #21,D0
+00001916  4E4F                     872      TRAP    #15
+00001918  223C 0000008C            873      MOVE.L  #140,D1
+0000191E  243C 000000D2            874      MOVE.L  #210,D2
+00001924  103C 005F                875      MOVE.B  #95,D0   *---------> STRING HIT HIMSELF
+00001928  43F9 00001E17            876      LEA     HITWALLSTR,A1
+0000192E  4E4F                     877      TRAP    #15
+00001930                           878      
+00001930  223C 000000C8            879      MOVE.L  #200,D1 | 
+00001936  103C 0017                880      MOVE.B  #23,D0  | *----> DELAY 2.0 SEC 
+0000193A  4E4F                     881      TRAP    #15     |
+0000193C                           882      
+0000193C  6100 0214                883      BSR     STOP_MUSIC
+00001940                           884      
+00001940                           885      
+00001940                           886  NEW_OR_NOT  *-------------> ASK FOR NEW GAME OR NOT
+00001940  43F9 00001DEE            887      LEA     MENUMUSIC,A1 | LOAD MENU MUSIC
+00001946  103C 0047                888      MOVE.B  #71,D0       |
+0000194A  4E4F                     889      TRAP    #15          |
+0000194C  143C 0001                890      MOVE.B  #1,D2        |
+00001950  103C 004C                891      MOVE.B  #76,D0       | PLAY MENU MUSIC ONCE
+00001954  4E4F                     892      TRAP    #15          |
+00001956                           893       
+00001956  6100 0204                894      BSR     CLEAN_SR
+0000195A                           895      
+0000195A                           896      *CUSTOM STRING OUTPUT
+0000195A  223C 00828484            897      MOVE.L  #BTGRAY,D1
+00001960  243C 06180011            898      MOVE.L  #FONT1,D2
+00001966  103C 0015                899      MOVE.B  #21,D0
+0000196A  4E4F                     900      TRAP    #15
+0000196C  7208                     901      MOVE.L  #8,D1
+0000196E  243C 000000BE            902      MOVE.L  #190,D2
+00001974  103C 005F                903      MOVE.B  #95,D0   *---------> STRING CUSTOM
+00001978  43F9 00001E43            904      LEA     NEW_NOTSTR,A1
+0000197E  4E4F                     905      TRAP    #15 
+00001980  4281                     906      CLR.L   D1
+00001982  323C 1106                907      MOVE.W  #CENTRE,D1  *--> SET CURSOR ON CENTRE
+00001986  103C 000B                908      MOVE.B  #11,D0
+0000198A  4E4F                     909      TRAP    #15        
+0000198C                           910      
+0000198C                           911      *CHECK WHICH KEY WILL BE PRESSED
+0000198C  4241                     912      CLR.W   D1            |
+0000198E  103C 0007                913      MOVE.B  #7,D0         |
+00001992  4E4F                     914      TRAP    #15           |
+00001994  103C 0005                915      MOVE.B  #5,D0         | 
+00001998  4E4F                     916      TRAP    #15           |
+0000199A  B23C 0059                917      CMP.B   #$59,D1       | ---> CHECK 'Y'
+0000199E  6700 001C                918      BEQ     RESTORE       |
+000019A2  B23C 0079                919      CMP.B   #$79,D1       | ---> CHECK 'y'
+000019A6  6700 0014                920      BEQ     RESTORE       |
+000019AA  B23C 004E                921      CMP.B   #$4E,D1       | ---> CHECK 'N'
+000019AE  6700 00BA                922      BEQ     STOP          |
+000019B2  B23C 006E                923      CMP.B   #$6E,D1       | ---> CHECK 'n' 
+000019B6  6688                     924      BNE     NEW_OR_NOT    |
+000019B8  6700 00B0                925      BEQ     STOP          |
+000019BC                           926      
+000019BC                           927      
+000019BC                           928      
+000019BC                           929      
+000019BC                           930  *============ LABEL WHO RESTORE THE GAME FOR RELAUNCH ============*
+000019BC                           931  
+000019BC                           932  
+000019BC                           933               
+000019BC                           934  RESTORE     
+000019BC  6100 019E                935      BSR     CLEAN_SR  *---------> SUB-ROUTINE TO CLEAN ALL AND REFILL WITH BLACK
+000019C0  6100 01F6                936      BSR     VIEW_SCORES  *------> PRINT CURRENT SCORE, RECORD AND ASK IF YOU WANT SAVE IT
+000019C4                           937      
+000019C4                           938      *CHECK WHICH KEY WILL BE PRESSED
+000019C4  4241                     939      CLR.W   D1            |
+000019C6  103C 0007                940      MOVE.B  #7,D0         |
+000019CA  4E4F                     941      TRAP    #15           |
+000019CC  103C 0005                942      MOVE.B  #5,D0         | 
+000019D0  4E4F                     943      TRAP    #15           |
+000019D2  B23C 0059                944      CMP.B   #$59,D1       | ---> CHECK 'Y'
+000019D6  6700 0022                945      BEQ     SAVING1       |
+000019DA  B23C 0079                946      CMP.B   #$79,D1       | ---> CHECK 'y'
+000019DE  6700 001A                947      BEQ     SAVING1       |
+000019E2  B23C 004E                948      CMP.B   #$4E,D1       | ---> CHECK 'N'
+000019E6  6700 001E                949      BEQ     NO_SAVE       |
+000019EA  B23C 006E                950      CMP.B   #$6E,D1       | ---> CHECK 'n' 
+000019EE  6600 FF50                951      BNE     NEW_OR_NOT    |
+000019F2  6700 0012                952      BEQ     NO_SAVE       |
+000019F6  6100 0164                953      BSR     CLEAN_SR      | SUB-ROUTINE TO CLEAN ALL AND REFILL WITH BLACK
+000019FA                           954      
+000019FA                           955  SAVING1
+000019FA  6100 029C                956      BSR     SAVER_SR *----> SUB-ROUTINE WHO WRITE THE FILE
+000019FE  6100 015C                957      BSR     CLEAN_SR *----> SUB-ROUTINE TO CLEAN ALL AND REFILL WITH BLACK
+00001A02  6100 0174                958      BSR     COUNTDOWN_SR *> SUB-ROUTINE TO COUNTDOWN THE SAVING
+00001A06                           959      
+00001A06                           960  NO_SAVE
+00001A06  6100 0154                961      BSR     CLEAN_SR *----> SUB-ROUTINE TO CLEAN ALL AND REFILL WITH BLACK
+00001A0A                           962                 
+00001A0A                           963      *COUNTDOWN LOOP SECTION START HERE
+00001A0A  223C 000000AA            964      MOVE.L  #170,D1
+00001A10  243C 000000BE            965      MOVE.L  #190,D2
+00001A16  103C 005F                966      MOVE.B  #95,D0 
+00001A1A  43F9 00001E98            967      LEA     STARTSTR,A1
+00001A20  4E4F                     968      TRAP    #15
+00001A22  7403                     969      MOVE.L  #3,D2
+00001A24                           970  COUNTDOWN_LOOP
+00001A24  223C 00001106            971      MOVE.L  #CENTRE,D1  *--> SET CURSOR ON CENTRE
+00001A2A  103C 000B                972      MOVE.B  #11,D0
+00001A2E  4E4F                     973      TRAP    #15
+00001A30  4281                     974      CLR.L   D1
+00001A32  1202                     975      MOVE.B  D2,D1
+00001A34  103C 0003                976      MOVE.B  #3,D0
+00001A38  4E4F                     977      TRAP    #15
+00001A3A  7264                     978      MOVE.L  #100,D1    |
+00001A3C  103C 0017                979      MOVE.B  #23,D0     | DELAY 1 SEC 
+00001A40  4E4F                     980      TRAP    #15        |
+00001A42  5302                     981      SUB.B   #1,D2
+00001A44  4A02                     982      TST.B   D2
+00001A46  6EDC                     983      BGT     COUNTDOWN_LOOP
+00001A48                           984      *COUNTDOWN LOOP SECTION STOP HERE
+00001A48                           985      
+00001A48  6100 0112                986      BSR     CLEAN_SR *---> SUB-ROUTINE TO CLEAN ALL AND REFILL WITH BLACK
+00001A4C  6100 0104                987      BSR     STOP_MUSIC
+00001A50                           988      
+00001A50  223C 00FFCA82            989      MOVE.L  #LCYAN,D1    | RESET FONT TO STANDARD
+00001A56  243C 01090000            990      MOVE.L  #STDFONT,D2  |
+00001A5C  103C 0015                991      MOVE.B  #21,D0       |
+00001A60  4E4F                     992      TRAP    #15          |
+00001A62                           993      
+00001A62  6100 00EE                994      BSR     STOP_MUSIC
+00001A66                           995      
+00001A66  4EF8 1000                996      JMP     START
+00001A6A                           997      
+00001A6A                           998      
+00001A6A                           999       
+00001A6A                          1000    
+00001A6A                          1001  *============ LABEL WHO SAVE THE RECORD AND STOP THE GAME ============*
+00001A6A                          1002  
+00001A6A                          1003  STOP
+00001A6A  6100 00F0               1004      BSR     CLEAN_SR *---------> SUB-ROUTINE TO CLEAN ALL AND REFILL WITH BLACK
+00001A6E  6100 0148               1005      BSR     VIEW_SCORES *------> PRINT CURRENT SCORE, RECORD AND ASK IF YOU WANT SAVE IT
+00001A72                          1006      
+00001A72                          1007      *CHECK WHICH KEY WILL BE PRESSED
+00001A72  4241                    1008      CLR.W   D1            |
+00001A74  103C 0007               1009      MOVE.B  #7,D0         |
+00001A78  4E4F                    1010      TRAP    #15           |
+00001A7A  103C 0005               1011      MOVE.B  #5,D0         | 
+00001A7E  4E4F                    1012      TRAP    #15           |
+00001A80  B23C 0059               1013      CMP.B   #$59,D1       | ---> CHECK 'Y'
+00001A84  6700 0022               1014      BEQ     SAVING2       |
+00001A88  B23C 0079               1015      CMP.B   #$79,D1       | ---> CHECK 'y'
+00001A8C  6700 001A               1016      BEQ     SAVING2       |
+00001A90  B23C 004E               1017      CMP.B   #$4E,D1       | ---> CHECK 'N'
+00001A94  6700 001E               1018      BEQ     STOP_E_NOSAVE |
+00001A98  B23C 006E               1019      CMP.B   #$6E,D1       | ---> CHECK 'n' 
+00001A9C  6600 FEA2               1020      BNE     NEW_OR_NOT    |
+00001AA0  6700 0012               1021      BEQ     STOP_E_NOSAVE |
+00001AA4                          1022      
+00001AA4  6100 00B6               1023      BSR     CLEAN_SR *---------> SUB-ROUTINE TO CLEAN ALL AND REFILL WITH BLACK
+00001AA8                          1024      
+00001AA8                          1025  SAVING2
+00001AA8  6100 01EE               1026      BSR     SAVER_SR *---------> SUB-ROUTINE WHO WRITE THE FILE
+00001AAC  6100 00AE               1027      BSR     CLEAN_SR *---------> SUB-ROUTINE TO CLEAN ALL AND REFILL WITH BLACK
+00001AB0  6100 00C6               1028      BSR     COUNTDOWN_SR *-----> SUB-ROUTINE TO COUNTDOWN THE SAVING
+00001AB4                          1029  
+00001AB4                          1030  STOP_E_NOSAVE
+00001AB4  724B                    1031      MOVE.L  #75,D1       |
+00001AB6  103C 0017               1032      MOVE.B  #23,D0       | DELAY 0.75 SEC 
+00001ABA  4E4F                    1033      TRAP    #15          | 
+00001ABC                          1034      
+00001ABC  6100 009E               1035      BSR     CLEAN_SR *---------> SUB-ROUTINE TO CLEAN ALL AND REFILL WITH BLACK
+00001AC0                          1036     
+00001AC0                          1037      *BYE BYE STRING OUTPUT
+00001AC0  223C 000000B4           1038      MOVE.L  #180,D1
+00001AC6  243C 000000D2           1039      MOVE.L  #210,D2
+00001ACC  103C 005F               1040      MOVE.B  #95,D0   *---------> STRING 'SEE YOU SOON'
+00001AD0  43F9 00001E67           1041      LEA     BYESTR,A1
+00001AD6  4E4F                    1042      TRAP    #15
+00001AD8                          1043      
+00001AD8  6100 0078               1044      BSR     STOP_MUSIC
+00001ADC                          1045      
+00001ADC  4E72 3000               1046      STOP    #$3000
+00001AE0                          1047      
+00001AE0                          1048  *============ SOME ROUTINE LIKE CLEANER, SAVER, COUNTDOWNER ===========*
+00001AE0                          1049  
+00001AE0                          1050  *SNAKE DRAWER SUB-ROUTINE
+00001AE0                          1051  SNAKE_SQUARE_DRAWER              
+00001AE0  4281                    1052      CLR.L   D1        | 
+00001AE2  4282                    1053      CLR.L   D2        |
+00001AE4  4283                    1054      CLR.L   D3        |
+00001AE6  4284                    1055      CLR.L   D4        |
+00001AE8  3218                    1056      MOVE.W  (A0)+,D1  |
+00001AEA  3410                    1057      MOVE.W  (A0),D2   |
+00001AEC  3601                    1058      MOVE.W  D1,D3     | --------> DRAW SNAKE IN COORD X,Y,X1,Y1
+00001AEE  0643 0011               1059      ADD.W   #17,D3    |
+00001AF2  3802                    1060      MOVE.W  D2,D4     |
+00001AF4  0644 0011               1061      ADD.W   #17,D4    |
+00001AF8  103C 0057               1062      MOVE.B  #87,D0    |
+00001AFC  4E4F                    1063      TRAP    #15       |
+00001AFE  4E75                    1064      RTS               |
+00001B00                          1065  
+00001B00                          1066  
+00001B00                          1067  *APPLE DRAWER SUB-ROUTINE
+00001B00                          1068  APPLE_DRAWER
+00001B00  41F9 00001DD0           1069      LEA     APPLE,A0
+00001B06  4281                    1070      CLR.L   D1         
+00001B08  4282                    1071      CLR.L   D2        
+00001B0A  4283                    1072      CLR.L   D3        
+00001B0C  4284                    1073      CLR.L   D4        
+00001B0E  3218                    1074      MOVE.W  (A0)+,D1  
+00001B10  3410                    1075      MOVE.W  (A0),D2   
+00001B12  3601                    1076      MOVE.W  D1,D3     
+00001B14  0643 0011               1077      ADD.W   #17,D3    
+00001B18  3802                    1078      MOVE.W  D2,D4     
+00001B1A  0644 0011               1079      ADD.W   #17,D4             
+00001B1E  103C 0058               1080      MOVE.B  #88,D0   
+00001B22  4E4F                    1081      TRAP    #15 
+00001B24  4E75                    1082      RTS
+00001B26                          1083      
+00001B26                          1084  *SPEED INCREASING SUB-ROUTINE
+00001B26                          1085  SPEED_INCREASING
+00001B26  B23C 0014               1086      CMP.B   #20,D1
+00001B2A  6C00 0008               1087      BGE     HARD_MODE
+00001B2E  53B9 00001DCC           1088      SUB.L   #1,SPEED   
+00001B34                          1089  HARD_MODE
+00001B34  B23C 0023               1090      CMP.B   #35,D1
+00001B38  6600 0008               1091      BNE     EXTREME_MODE
+00001B3C  55B9 00001DCC           1092      SUB.L   #2,SPEED
+00001B42                          1093  EXTREME_MODE
+00001B42  B23C 0032               1094      CMP.B   #50,D1
+00001B46  6600 0008               1095      BNE     MAX_SPEED_REACHED
+00001B4A  53B9 00001DCC           1096      SUB.L   #1,SPEED
+00001B50                          1097  MAX_SPEED_REACHED
+00001B50  4E75                    1098      RTS
+00001B52                          1099      
+00001B52                          1100  *MUSIC STOPPER SUB-ROUTINE
+00001B52                          1101  STOP_MUSIC
+00001B52  7403                    1102      MOVE.L  #3,D2        | CODE #3 IN D2.L IN D1.B
+00001B54  103C 004C               1103      MOVE.B  #76,D0       |
+00001B58  4E4F                    1104      TRAP    #15
+00001B5A  4E75                    1105      RTS
+00001B5C                          1106  
+00001B5C                          1107  *DISPLAY CLEANER SUB-ROUTINE
+00001B5C                          1108  CLEAN_SR   
+00001B5C  700B                    1109      MOVE.L  #11,D0    
+00001B5E  323C FF00               1110      MOVE.W  #CLEAN,D1
+00001B62  4E4F                    1111      TRAP    #15
+00001B64  7200                    1112      MOVE.L  #BLACK,D1
+00001B66  103C 0051               1113      MOVE.B  #81,D0
+00001B6A  4E4F                    1114      TRAP    #15
+00001B6C  4241                    1115      CLR.W   D1
+00001B6E  4242                    1116      CLR.W   D2
+00001B70  103C 0059               1117      MOVE.B  #89,D0
+00001B74  4E4F                    1118      TRAP    #15
+00001B76  4E75                    1119      RTS
+00001B78                          1120  
+00001B78                          1121  *SAVING COUNTDOWNER SUB-ROUTINE    
+00001B78                          1122  COUNTDOWN_SR
+00001B78  223C 000000E1           1123      MOVE.L  #225,D1
+00001B7E  243C 000000BE           1124      MOVE.L  #190,D2
+00001B84  103C 005F               1125      MOVE.B  #95,D0   *---------> STRING CUSTOM
+00001B88  43F9 00001EE1           1126      LEA     SAVINGSTR,A1
+00001B8E  4E4F                    1127      TRAP    #15
+00001B90  7403                    1128      MOVE.L  #3,D2
+00001B92                          1129  COUNTDOWN_LOOPEND
+00001B92  223C 00001106           1130      MOVE.L  #CENTRE,D1  *------> SET CURSOR ON CENTRE
+00001B98  103C 000B               1131      MOVE.B  #11,D0
+00001B9C  4E4F                    1132      TRAP    #15
+00001B9E  4281                    1133      CLR.L   D1
+00001BA0  1202                    1134      MOVE.B  D2,D1
+00001BA2  103C 0003               1135      MOVE.B  #3,D0
+00001BA6  4E4F                    1136      TRAP    #15
+00001BA8  7264                    1137      MOVE.L  #100,D1      |
+00001BAA  103C 0017               1138      MOVE.B  #23,D0       | DELAY 1 SEC 
+00001BAE  4E4F                    1139      TRAP    #15          |
+00001BB0  5302                    1140      SUB.B   #1,D2
+00001BB2  4A02                    1141      TST.B   D2
+00001BB4  6EDC                    1142      BGT     COUNTDOWN_LOOPEND
+00001BB6  4E75                    1143      RTS
+00001BB8                          1144      
+00001BB8                          1145  *SCORE PRINTER SUB-ROUTINE  
+00001BB8                          1146  VIEW_SCORES
+00001BB8                          1147      *YOUR SCORE STRING OUTPUT
+00001BB8  7250                    1148      MOVE.L  #80,D1
+00001BBA  243C 00000094           1149      MOVE.L  #148,D2
+00001BC0  103C 005F               1150      MOVE.B  #95,D0   *---------> STRING CUSTOM
+00001BC4  43F9 00001EEE           1151      LEA     YOURSCORE,A1
+00001BCA  4E4F                    1152      TRAP    #15
+00001BCC  7403                    1153      MOVE.L  #3,D2
+00001BCE  223C 00001504           1154      MOVE.L  #CENTRE3,D1  *-----> SET CURSOR ON CENTRE
+00001BD4  103C 000B               1155      MOVE.B  #11,D0
+00001BD8  4E4F                    1156      TRAP    #15
+00001BDA  223C 000000FF           1157      MOVE.L  #RED,D1
+00001BE0  243C 06180011           1158      MOVE.L  #FONT1,D2
+00001BE6  103C 0015               1159      MOVE.B  #21,D0
+00001BEA  4E4F                    1160      TRAP    #15
+00001BEC  41F9 00001DD4           1161      LEA     SCORE,A0
+00001BF2  4281                    1162      CLR.L   D1
+00001BF4  3210                    1163      MOVE.W  (A0),D1
+00001BF6  103C 0003               1164      MOVE.B  #3,D0
+00001BFA  4E4F                    1165      TRAP    #15
+00001BFC  223C 00828484           1166      MOVE.L  #BTGRAY,D1
+00001C02  243C 06180011           1167      MOVE.L  #FONT1,D2
+00001C08  103C 0015               1168      MOVE.B  #21,D0
+00001C0C  4E4F                    1169      TRAP    #15
+00001C0E                          1170      
+00001C0E                          1171      *CURRENT RECORD STRING OUTPUT
+00001C0E  7250                    1172      MOVE.L  #80,D1
+00001C10  7426                    1173      MOVE.L  #38,D2
+00001C12  103C 005F               1174      MOVE.B  #95,D0   *---------> STRING CUSTOM
+00001C16  43F9 00001F00           1175      LEA     CURRENTSTR,A1
+00001C1C  4E4F                    1176      TRAP    #15
+00001C1E  7403                    1177      MOVE.L  #3,D2
+00001C20  223C 00001A01           1178      MOVE.L  #CENTRE4,D1  *-----> SET CURSOR ON CENTRE4
+00001C26  103C 000B               1179      MOVE.B  #11,D0
+00001C2A  4E4F                    1180      TRAP    #15
+00001C2C  223C 000000FF           1181      MOVE.L  #RED,D1
+00001C32  243C 06180011           1182      MOVE.L  #FONT1,D2
+00001C38  103C 0015               1183      MOVE.B  #21,D0
+00001C3C  4E4F                    1184      TRAP    #15
+00001C3E  43F9 00001E02           1185      LEA     FILENAME,A1   | LOAD FILE IN A1
+00001C44  103C 0033               1186      MOVE.B  #51,D0        | 
+00001C48  4E4F                    1187      TRAP    #15           | 
+00001C4A  43F9 00001E0D           1188      LEA     BUFFER,A1     | LOAD STORAGE ADDRESS
+00001C50  7405                    1189      MOVE.L  #5,D2         | NUMBER BYTES TO READ IN THE FILE
+00001C52  103C 0035               1190      MOVE.B  #53,D0        | 
+00001C56  4E4F                    1191      TRAP    #15           |
+00001C58  123C 0005               1192      MOVE.B  #5,D1         | N CHAR TO DISPLAY
+00001C5C  103C 0001               1193      MOVE.B  #1,D0         | TRAP TASK #1 WITHOUT CRLF TO PRINT N CHAR
+00001C60  4E4F                    1194      TRAP    #15
+00001C62  223C 00828484           1195      MOVE.L  #BTGRAY,D1
+00001C68  243C 06180011           1196      MOVE.L  #FONT1,D2
+00001C6E  103C 0015               1197      MOVE.B  #21,D0
+00001C72  4E4F                    1198      TRAP    #15
+00001C74                          1199            
+00001C74                          1200      *SAVE ASKER STRING OUTPUT
+00001C74  7250                    1201      MOVE.L  #80,D1
+00001C76  243C 00000104           1202      MOVE.L  #260,D2
+00001C7C  103C 005F               1203      MOVE.B  #95,D0   *---------> STRING CUSTOM
+00001C80  43F9 00001EA9           1204      LEA     SAVESTR,A1
+00001C86  4E4F                    1205      TRAP    #15
+00001C88  7403                    1206      MOVE.L  #3,D2
+00001C8A  223C 00001108           1207      MOVE.L  #CENTRE2,D1  *-----> SET CURSOR ON CENTRE-BOTTOM
+00001C90  103C 000B               1208      MOVE.B  #11,D0
+00001C94  4E4F                    1209      TRAP    #15
+00001C96  4E75                    1210      RTS
+00001C98                          1211      
+00001C98                          1212  *SCORE SAVER SUB-ROUTINE 
+00001C98                          1213  SAVER_SR
+00001C98  6100 FEC2               1214      BSR     CLEAN_SR
+00001C9C  123C 0001               1215      MOVE.B  #1,D1        |
+00001CA0  103C 000C               1216      MOVE.B  #12,D0       | SET ECHO KAYBOARD
+00001CA4  4E4F                    1217      TRAP    #15          |
+00001CA6  7250                    1218      MOVE.L  #80,D1
+00001CA8  243C 000000AA           1219      MOVE.L  #170,D2
+00001CAE  103C 005F               1220      MOVE.B  #95,D0   *---------> STRING CUSTOM
+00001CB2  43F9 00001EC4           1221      LEA     SAVERECORD,A1
+00001CB8  4E4F                    1222      TRAP    #15
+00001CBA  7403                    1223      MOVE.L  #3,D2
+00001CBC  223C 00001106           1224      MOVE.L  #CENTRE,D1  *------> SET CURSOR ON CENTRE
+00001CC2  103C 000B               1225      MOVE.B  #11,D0
+00001CC6  4E4F                    1226      TRAP    #15
+00001CC8  43F9 00001E12           1227      LEA     RECORD,A1
+00001CCE  103C 0002               1228      MOVE.B  #2,D0
+00001CD2  4E4F                    1229      TRAP    #15
+00001CD4  3449                    1230      MOVEA   A1,A2
+00001CD6  43F9 00001E02           1231      LEA     FILENAME,A1   
+00001CDC  103C 0033               1232      MOVE.B  #51,D0    
+00001CE0  4E4F                    1233      TRAP    #15 
+00001CE2  324A                    1234      MOVEA   A2,A1
+00001CE4  143C 0006               1235      MOVE.B  #6,D2
+00001CE8  103C 0036               1236      MOVE.B  #54,D0
+00001CEC  4E4F                    1237      TRAP    #15
+00001CEE  103C 0038               1238      MOVE.B  #56,D0
+00001CF2  4E4F                    1239      TRAP    #15
+00001CF4  4E75                    1240      RTS
+00001CF6                          1241      
+00001CF6                          1242      
+00001CF6                          1243  
+00001CF6  FFFF FFFF               1244          SIMHALT
+00001CFA                          1245      
+00001CFA                          1246  *RESEVED MEMORY FOR SNAKE*    
+00001CFA                          1247  CURRENT DS.W    2
+00001CFE                          1248  OLD     DS.W    2
+00001D02                          1249  MIDDLE  DS.W    100
+00001DCA                          1250  
+00001DCA                          1251  *RESERVED MEMORY FOR SNAKE SPECIFICATIONS*
+00001DCA                          1252  SIZE    DS.W    1
+00001DCC                          1253  SPEED   DS.L    1
+00001DD0                          1254  
+00001DD0                          1255  *RESERVED MEMORY FOR APPLE*
+00001DD0                          1256  APPLE   DS.W    2
+00001DD4                          1257  
+00001DD4                          1258  *RESERVED MEMORY FOR SCORES*
+00001DD4                          1259  SCORE   DS.B    2
+00001DD6                          1260  EATEN   DS.B    1
+00001DD7                          1261  GOLDEN  DS.B    1
+00001DD8                          1262  
+00001DD8                          1263  *SOUND AND FILE RESOURCE
+00001DD8= 53 4E 41 4B 45 5F ...   1264  GAMEMUSIC   DC.B    'SNAKE_MELODY_8BIT.wav',0
+00001DEE= 53 4E 41 4B 45 5F ...   1265  MENUMUSIC   DC.B    'SNAKE_MENU_8BIT.wav',0
+00001E02= 52 45 43 4F 52 44 ...   1266  FILENAME    DC.B    'RECORD.txt',0
+00001E0D                          1267  BUFFER      DS.B    5  
+00001E12                          1268  RECORD      DS.B    5
+00001E17                          1269  
+00001E17                          1270  *STRINGS
+00001E17= 59 4F 55 20 48 41 ...   1271  HITWALLSTR  DC.B     'YOU HAVE HIT A WALL!',0
+00001E2C= 59 4F 55 20 48 41 ...   1272  HITBODYSTR  DC.B     'YOU HAVE EAT YOURSELF!',0
+00001E43= 57 4F 55 4C 44 20 ...   1273  NEW_NOTSTR  DC.B     'WOULD YOU LIKE TO PLAY AGAIN? (Y/N)',0
+00001E67= 53 45 45 20 59 4F ...   1274  BYESTR      DC.B     'SEE YOU SOON! :D',0 
+00001E78= 52 45 43 4F 52 44 00    1275  RECORDSTR   DC.B     'RECORD',0
+00001E7F= 53 43 4F 52 45 00       1276  SCORESTR    DC.B     'SCORE',0
+00001E85= 41 50 50 4C 45 00       1277  APPLESTR    DC.B     'APPLE',0
+00001E8B= 47 4F 4C 44 45 4E ...   1278  GOLDENSTR   DC.B     'GOLDEN APPLE',0
+00001E98= 47 41 4D 45 20 53 ...   1279  STARTSTR    DC.B     'GAME START IN...',0
+00001EA9= 57 4F 55 4C 44 20 ...   1280  SAVESTR     DC.B     'WOULD YOU SAVE THE RECORD?',0
+00001EC4= 49 4E 53 45 52 54 ...   1281  SAVERECORD  DC.B     'INSERT THE CURRENT RECORD...',0
+00001EE1= 53 41 56 49 4E 47 ...   1282  SAVINGSTR   DC.B     'SAVING IN...',0
+00001EEE= 59 4F 55 52 20 53 ...   1283  YOURSCORE   DC.B     'YOUR SCORE IS... ',0
+00001F00= 54 48 45 20 43 55 ...   1284  CURRENTSTR  DC.B     'THE CURRENT RECORD IS ',0
+00001F17                          1285  
+00001F17                          1286      END    START
+
+No errors detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+APPLE               1DD0
+APPLESCORE          1896
+APPLESTR            1E85
+APPLE_DRAWER        1B00
+BLACK               0
+BTGRAY              828484
+BUFFER              1E0D
+BYESTR              1E67
+CENTRE              1106
+CENTRE2             1108
+CENTRE3             1504
+CENTRE4             1A01
+CHECKER_EAT_APPLE   167C
+CHECKER_HIT_ITSELF  1658
+CHECK_Y             178C
+CLEAN               FF00
+CLEAN_SR            1B5C
+COMPARING           175C
+CONTINUE            1620
+CONTINUE_TEST       177E
+COORD_APPLE         1798
+COPPER              2B65EC
+COPY                15B6
+COUNTDOWN_LOOP      1A24
+COUNTDOWN_LOOPEND   1B92
+COUNTDOWN_SR        1B78
+CURRENT             1CFA
+CURRENTSTR          1F00
+DOWN                16F6
+DRAGOON             1D8FF
+EATEN               1DD6
+EXTREME_MODE        1B42
+FILENAME            1E02
+FILL                150A
+FIND_APPLE          1726
+FIRE                1728F6
+FONT1               6180011
+GAMEMUSIC           1DD8
+GOLDEN              1DD7
+GOLDENSTR           1E8B
+GOLDEN_APPLE_COORD  17C0
+HARD_MODE           1B34
+HITBODYSTR          1E2C
+HITWALL             1906
+HITWALLSTR          1E17
+HIT_ITSELF          18C8
+IRIDIUM             2A3C3D
+JUNGLE              347C2C
+LBROWN              2B90EC
+LCYAN               FFCA82
+LEFT                170E
+LOOP                1568
+LOOP_LEFT           1148
+LOOP_LEFT2          12D0
+LOOP_LOWER          11CC
+LOOP_LOWER2         1354
+LOOP_RIGHT          1174
+LOOP_RIGHT2         12FC
+LOOP_UPPER          11A0
+LOOP_UPPER2         1328
+MAX_SPEED_REACHED   1B50
+MENUMUSIC           1DEE
+MIDDLE              1D02
+NEW_NOTSTR          1E43
+NEW_OR_NOT          1940
+NORMAL_SCORE        1846
+NO_SAVE             1A06
+OLD                 1CFE
+PURPLE              800080
+RECORD              1E12
+RECORDSTR           1E78
+RECT1               700
+RECT1B              702
+RECT2               1B00
+RECT2B              1D02
+RECT3               2C00
+RECT3B              3102
+RECT4               4300
+RECT4B              4302
+RED                 FF
+REFILLER_SNAKE_AND_BACKTAIL  16AE
+RESTART             1770
+RESTORE             19BC
+RIGHT               171A
+SAVERECORD          1EC4
+SAVER_SR            1C98
+SAVESTR             1EA9
+SAVING1             19FA
+SAVING2             1AA8
+SAVINGSTR           1EE1
+SCORE               1DD4
+SCORESTR            1E7F
+SCOREUP             186C
+SCORE_BONUS         187E
+SCORE_PRINT         181E
+SIZE                1DCA
+SKIP                157C
+SNAKE_SQUARE_DRAWER  1AE0
+SPEED               1DCC
+SPEED_INCREASING    1B26
+START               1000
+STARTSTR            1E98
+STDFONT             1090000
+STOP                1A6A
+STOP_E_NOSAVE       1AB4
+STOP_MUSIC          1B52
+UP                  1702
+VIEW_SCORES         1BB8
+YELLOW              FFFF
+YOURSCORE           1EEE
