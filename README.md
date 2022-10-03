@@ -1,1 +1,1 @@
-# Link to Emulator (Win only) = https://easy68k.software.informer.com/6.0/
+# Link to Emulator (Win only) = http://easy68k.com/
